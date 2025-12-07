@@ -22,12 +22,12 @@ typedef struct pile_t
 typedef struct table_t
 {
     pile_t piles[4]; // 0 = bottom, 51 = top
-    size_t available_piles;
+    size_t occupied_piles;
 } table_t;
 
 void print_card(const card_t *cardp)
 {
-    printf("suite=%d, value=%d\n", cardp->suite, cardp->value);
+    printf("suite = %d, value = %d\n", cardp->suite, cardp->value);
 }
 void print_pile(const pile_t *pilep)
 {
@@ -35,13 +35,13 @@ void print_pile(const pile_t *pilep)
     {
         print_card(pilep->cards + i);
     }
-    printf("\navailable_cards=%zu\n", pilep->available_cards);
+    printf("\navailable_cards = %zu\n", pilep->available_cards);
 }
 void print_table(const table_t *tablep)
 {
     printf("********\n");
-    printf("\npiles=%zu\n", tablep->available_piles);
-    for (size_t i = 0; i < tablep->available_piles; i++)
+    printf("\npiles with cards = %zu\n", tablep->occupied_piles);
+    for (size_t i = 0; i < tablep->occupied_piles; i++)
     {
         printf("pile:\n");
         print_pile(tablep->piles + i);
@@ -49,6 +49,12 @@ void print_table(const table_t *tablep)
     printf("********\n");
 }
 
+pile_t create_empty_pile()
+{
+    pile_t out_deck;
+    out_deck.available_cards = 0u;
+    return out_deck;
+}
 pile_t create_ordered_deck()
 {
     pile_t the_deck;
@@ -65,12 +71,6 @@ pile_t create_ordered_deck()
     the_deck.available_cards = MAX_CARDS;
     return the_deck;
 }
-pile_t create_empty_pile()
-{
-    pile_t out_deck;
-    out_deck.available_cards = 0u;
-    return out_deck;
-}
 pile_t create_random_deck()
 {
     pile_t ordered_deck = create_ordered_deck();
@@ -85,7 +85,6 @@ pile_t create_random_deck()
     }
     return out_deck;
 }
-
 table_t create_empty_table()
 {
     table_t table;
@@ -93,7 +92,7 @@ table_t create_empty_table()
     {
         table.piles[i] = create_empty_pile();
     }
-    table.available_piles = 0u;
+    table.occupied_piles = 0u;
     return table;
 }
 
@@ -103,8 +102,14 @@ card_t draw(pile_t *pilep)
     return pilep->cards[pilep->available_cards];
 }
 
-void spread(pile_t *game_deck, table_t *game_table)
+void place_four(pile_t *game_deck, table_t *game_table)
 {
+    for (size_t i = 0; i < 4; i++)
+    {
+        game_table->piles[i].cards[game_table->piles[i].available_cards] = draw(game_deck);
+        game_table->piles[i].available_cards++;
+    }
+    game_table->occupied_piles = 4;
 }
 
 void main()
@@ -113,7 +118,8 @@ void main()
 
     pile_t game_deck = create_random_deck();
     table_t game_table = create_empty_table();
-    spread(&game_deck, &game_table);
+    place_four(&game_deck, &game_table);
+    place_four(&game_deck, &game_table);
     print_table(&game_table);
 }
 
