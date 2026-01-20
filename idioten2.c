@@ -112,6 +112,29 @@ void place_four(pile_t *game_deck, table_t *game_table)
     game_table->occupied_piles = 4;
 }
 
+void clean_table(table_t *game_table)
+{
+    do
+    {
+        bool need_cleaning = false;
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                if (i == j || game_table->piles[i].available_cards == 0 || game_table->piles[j].available_cards == 0)
+                {
+                    continue;
+                }
+
+                int top_i_idx = game_table->piles[i].available_cards - 1;
+                int top_j_idx = game_table->piles[j].available_cards - 1;
+
+                if (game_table->) // HÄR FÅR VI FORTSÄTTA!!
+            }
+        }
+    } while (need_cleaning = true);
+}
+
 void main()
 {
     srand(0); // seeds with current time
