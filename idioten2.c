@@ -25,28 +25,56 @@ typedef struct table_t
     size_t occupied_piles;
 } table_t;
 
+typedef enum
+{
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades
+} Suite;
+
 void print_card(const card_t *cardp)
 {
-    printf("suite = %d, value = %d\n", cardp->suite, cardp->value);
+    switch (cardp->suite)
+    {
+    case 0:
+        printf("%d of Hearts\n", cardp->value);
+        break;
+    case 1:
+        printf("%d of Diamonds\n", cardp->value);
+        break;
+    case 2:
+        printf("%d of Clubs\n", cardp->value);
+        break;
+    case 3:
+        printf("%d of Spades\n", cardp->value);
+        break;
+    }
 }
 void print_pile(const pile_t *pilep)
 {
+    printf("available_cards = %zu\n", pilep->available_cards);
     for (size_t i = 0; i < pilep->available_cards; i++)
     {
         print_card(pilep->cards + i);
     }
-    printf("\navailable_cards = %zu\n", pilep->available_cards);
 }
 void print_table(const table_t *tablep)
 {
     printf("********\n");
-    printf("\npiles with cards = %zu\n", tablep->occupied_piles);
-    for (size_t i = 0; i < tablep->occupied_piles; i++)
-    {
-        printf("pile:\n");
-        print_pile(tablep->piles + i);
-    }
-    printf("********\n");
+    printf("%zu piles with cards\n", tablep->occupied_piles);
+    printf("********\n\n");
+    for (size_t i = 0; i < 4; i++)
+        if (tablep->piles[i].available_cards == 0)
+        {
+            printf("\npile: %zu is empty\n", i);
+        }
+        else
+        {
+            printf("\npile: %zu\n", i);
+            print_pile(tablep->piles + i);
+        }
+    printf("\n********\n");
 }
 
 pile_t create_empty_pile()
@@ -116,21 +144,19 @@ bool need_cleaning(table_t *game_table)
 {
     for (int i = 0; i < 4; i++)
     {
-        for (int j = 0; j < 4; j++)
+        for (int j = i + 1; j < 4; j++)
         {
-            if (game_table->piles[i].available_cards != 0 && game_table->piles[j].available_cards != 0 &&
+            if (game_table->piles[i].available_cards > 0 &&
+                game_table->piles[j].available_cards > 0 &&
                 game_table->piles[i].cards[game_table->piles[i].available_cards - 1].suite ==
-                    game_table->piles[i].cards[game_table->piles[i].available_cards - 1].suite &&
-                i != j)
+                    game_table->piles[j].cards[game_table->piles[j].available_cards - 1].suite)
             {
+                printf("cleaning is needed\n");
                 return true;
-            }
-            else
-            {
-                return false;
             }
         }
     }
+    return false;
 }
 
 table_t *clean_table(table_t *game_table)
@@ -162,23 +188,135 @@ table_t *clean_table(table_t *game_table)
                         game_table->piles[j].available_cards--;
                     }
                 }
-                // int top_i_idx = game_table->piles[i].available_cards - 1;
-                // int top_j_idx = game_table->piles[j].available_cards - 1;
-                // if (game_table->) // HÄR FÅR VI FORTSÄTTA!!
             }
         }
     } while (need_cleaning(game_table));
     return game_table;
 }
 
+int empty_piles(table_t *game_table)
+{
+    int empty_piles_count = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        if (game_table->piles[1].available_cards == 0)
+        {
+            empty_piles_count++;
+        }
+    }
+    printf("there is %d empty piles\n", empty_piles_count);
+    return empty_piles_count;
+}
+
+table_t *strategy_no_brainers(table_t *game_table)
+// om vi har ledig plats och en högs två översta kort har samma färg och
+// den översta är lägre än det näst översta så flyttar vi ner det översta, dvs det slängs direkt.
+{
+    bool no_brainer_exists;
+    do
+    {
+        no_brainer_exists = false;
+        if (empty_piles > 0)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (game_table->piles[i].available_cards > 1)
+                {
+                    if (game_table->piles[i].cards[game_table->piles[i].available_cards - 1].suite ==
+                            game_table->piles[i].cards[game_table->piles[i].available_cards - 2].suite &&
+                        game_table->piles[i].cards[game_table->piles[i].available_cards - 1].value <
+                            game_table->piles[i].cards[game_table->piles[i].available_cards - 2].value)
+                    {
+                        game_table->piles[i].available_cards--;
+                        no_brainer_exists = true;
+                    }
+                }
+            }
+        }
+    } while (no_brainer_exists);
+    return game_table;
+}
+
+table_t *strategy_1(table_t *game_table)
+// tar högsta kortet och lägger på ledig plats
+{
+    int highest_is_in_pile = -1;
+    int highest_value = -1;
+    for (int i = 0; i < 4; i++)
+    {
+        if (game_table->piles[i].available_cards > 0)
+        {
+            if (game_table->piles[i].cards[game_table->piles[i].available_cards - 1].value > highest_value)
+            {
+                highest_is_in_pile = i;
+                highest_value = game_table->piles[i].cards[game_table->piles[i].available_cards - 1].value;
+            }
+        }
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        if (game_table->piles[i].available_cards == 0)
+        {
+            game_table->piles[i].cards[0] = game_table->piles[highest_is_in_pile].cards
+                                                [game_table->piles[highest_is_in_pile].available_cards - 1];
+            game_table->piles[i].available_cards = 1;
+            game_table->piles[highest_is_in_pile].available_cards--;
+            return game_table;
+        }
+    }
+    printf("we should never end up here so something is wrong\n");
+    return game_table;
+}
+
+bool to_do(table_t *game_table)
+// kollar bara om det finns fler än 1 kort i någon hög.
+{
+    for (int i = 0; i < 4; i++)
+    {
+        if (game_table->piles[i].available_cards > 1)
+            return true;
+    }
+    return false;
+}
+
+bool evaluate_result(table_t *game_table)
+{
+    int lonely_ace = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        if (game_table->piles[i].available_cards == 1 && game_table->piles[i].cards[0].value == 13)
+            lonely_ace++;
+    }
+    return (lonely_ace == 4);
+}
+
 void main()
 {
-    srand(0); // seeds with current time
+    srand(time(NULL)); // seeds with current time
 
     pile_t game_deck = create_random_deck();
     table_t game_table = create_empty_table();
-    place_four(&game_deck, &game_table);
-    place_four(&game_deck, &game_table);
+    for (int i = 0; i < 13; i++)
+    {
+        place_four(&game_deck, &game_table);
+        while (need_cleaning(&game_table))
+        {
+            clean_table(&game_table);
+            while (empty_piles(&game_table) > 0 && to_do(&game_table))
+            {
+                strategy_no_brainers(&game_table);
+                strategy_1(&game_table);
+            }
+        }
+    }
+    if (evaluate_result(&game_table))
+    {
+        printf("SUCCESS!!!\n");
+    }
+    else
+    {
+        printf("failface\n");
+    }
     print_table(&game_table);
 }
 
