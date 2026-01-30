@@ -151,7 +151,7 @@ bool need_cleaning(table_t *game_table)
                 game_table->piles[i].cards[game_table->piles[i].available_cards - 1].suite ==
                     game_table->piles[j].cards[game_table->piles[j].available_cards - 1].suite)
             {
-                printf("cleaning is needed\n");
+                // printf("cleaning is needed\n");
                 return true;
             }
         }
@@ -161,7 +161,7 @@ bool need_cleaning(table_t *game_table)
 
 table_t *clean_table(table_t *game_table)
 {
-    do
+    while (need_cleaning(game_table))
     {
         for (int i = 0; i < 4; i++)
         {
@@ -190,7 +190,7 @@ table_t *clean_table(table_t *game_table)
                 }
             }
         }
-    } while (need_cleaning(game_table));
+    }
     return game_table;
 }
 
@@ -199,12 +199,12 @@ int empty_piles(table_t *game_table)
     int empty_piles_count = 0;
     for (int i = 0; i < 4; i++)
     {
-        if (game_table->piles[1].available_cards == 0)
+        if (game_table->piles[i].available_cards == 0)
         {
             empty_piles_count++;
         }
     }
-    printf("there is %d empty piles\n", empty_piles_count);
+    // printf("there is %d empty piles\n", empty_piles_count);
     return empty_piles_count;
 }
 
@@ -216,7 +216,7 @@ table_t *strategy_no_brainers(table_t *game_table)
     do
     {
         no_brainer_exists = false;
-        if (empty_piles > 0)
+        if (empty_piles(game_table) > 0)
         {
             for (int i = 0; i < 4; i++)
             {
@@ -227,6 +227,7 @@ table_t *strategy_no_brainers(table_t *game_table)
                         game_table->piles[i].cards[game_table->piles[i].available_cards - 1].value <
                             game_table->piles[i].cards[game_table->piles[i].available_cards - 2].value)
                     {
+                        printf("NO BRAINER EXISTS!\n");
                         game_table->piles[i].available_cards--;
                         no_brainer_exists = true;
                     }
@@ -244,12 +245,15 @@ table_t *strategy_1(table_t *game_table)
     int highest_value = -1;
     for (int i = 0; i < 4; i++)
     {
-        if (game_table->piles[i].available_cards > 0)
+        if (game_table->piles[i].available_cards > 1)
         {
             if (game_table->piles[i].cards[game_table->piles[i].available_cards - 1].value > highest_value)
             {
                 highest_is_in_pile = i;
                 highest_value = game_table->piles[i].cards[game_table->piles[i].available_cards - 1].value;
+                printf("**********************************\n");
+                printf("highest card in pile with more than 1 card is card of value %d in pile %d\n", highest_value, highest_is_in_pile);
+                printf("**********************************\n");
             }
         }
     }
@@ -259,6 +263,9 @@ table_t *strategy_1(table_t *game_table)
         {
             game_table->piles[i].cards[0] = game_table->piles[highest_is_in_pile].cards
                                                 [game_table->piles[highest_is_in_pile].available_cards - 1];
+            printf("**********************************\n");
+            printf("moved highest card to the empty pile!\n");
+            printf("**********************************\n");
             game_table->piles[i].available_cards = 1;
             game_table->piles[highest_is_in_pile].available_cards--;
             return game_table;
@@ -266,6 +273,10 @@ table_t *strategy_1(table_t *game_table)
     }
     printf("we should never end up here so something is wrong\n");
     return game_table;
+}
+
+table_t *strategy_3(table_t *game_table)
+{
 }
 
 bool to_do(table_t *game_table)
@@ -290,35 +301,114 @@ bool evaluate_result(table_t *game_table)
     return (lonely_ace == 4);
 }
 
+void apply_strategy(int strategy, table_t *game_table)
+{
+    if (strategy == 1)
+    {
+        strategy_1(game_table);
+    }
+    else if (strategy == 3)
+    {
+        strategy_3(game_table);
+    }
+}
+
+void play(int n_games, int strategy)
+{
+    int played = 0;
+    int successes = 0;
+    for (int n = 0; n < n_games; n++)
+    {
+        pile_t game_deck = create_random_deck();
+        table_t game_table = create_empty_table();
+        for (int i = 0; i < 13; i++)
+        {
+            place_four(&game_deck, &game_table);
+            while (need_cleaning(&game_table))
+            {
+                clean_table(&game_table);
+                while (empty_piles(&game_table) > 0 && to_do(&game_table))
+                {
+                    strategy_no_brainers(&game_table);
+                    apply_strategy(strategy, &game_table);
+                }
+            }
+        }
+        played++;
+        if (evaluate_result(&game_table))
+        {
+            printf("SUCCESS!!!\n");
+            print_table(&game_table);
+            successes++;
+        }
+        else
+        {
+            // printf("failface\n");
+        }
+    }
+    double success_rate = successes / n_games;
+    printf("Played %d games...\n", played);
+    printf("Number of successes %d\n", successes);
+    printf("Success rate %f\n", success_rate * 1000000);
+}
+
 void main()
 {
     srand(time(NULL)); // seeds with current time
-
+    printf("**********************************************************\n");
+    printf("PLAYING A GAME\n");
+    printf("**********************************************************\n");
     pile_t game_deck = create_random_deck();
     table_t game_table = create_empty_table();
     for (int i = 0; i < 13; i++)
     {
         place_four(&game_deck, &game_table);
-        while (need_cleaning(&game_table))
+        printf("**********************************\n");
+        printf("this is just after placing\n");
+        printf("**********************************\n");
+        print_table(&game_table);
+        clean_table(&game_table);
+        while (empty_piles(&game_table) > 0 && to_do(&game_table) == true)
         {
+            printf("There is something to do!\n");
+            strategy_no_brainers(&game_table);
+            strategy_1(&game_table);
             clean_table(&game_table);
-            while (empty_piles(&game_table) > 0 && to_do(&game_table))
-            {
-                strategy_no_brainers(&game_table);
-                strategy_1(&game_table);
-            }
         }
+        printf("**********************************\n");
+        printf("this is after strategies\n");
+        printf("**********************************\n");
+        print_table(&game_table);
     }
+
     if (evaluate_result(&game_table))
     {
         printf("SUCCESS!!!\n");
+        print_table(&game_table);
     }
     else
     {
         printf("failface\n");
+        print_table(&game_table);
     }
-    print_table(&game_table);
 }
+
+// int n_games_exponent = 0;
+// int strategy;
+// printf("What strategy would you like to try?\n");
+// printf("1. Highest card gets put on empty column\n");
+// printf("2. n/a yet\n");
+// printf("3. Card that results in fewest cards on table gets put on empty column\n");
+// scanf("%d", &strategy);
+// printf("How many games? 10 raised to input will be played.\n");
+// scanf("%d", &n_games_exponent);
+// int n_games = pow(10, n_games_exponent);
+// printf("Playing %d games with strategy %d\n", n_games, strategy);
+// clock_t start = clock();
+// play(n_games, strategy);
+// clock_t end = clock();
+// double time_spent = ((double)(end - start)) / CLOCKS_PER_SEC;
+// printf("It took %f seconds\n", time_spent);
 
 // deck_t stefans_deck;
 // deck_t* stefans_deckp = &stefans_deck;
